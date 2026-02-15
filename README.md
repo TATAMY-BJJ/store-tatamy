@@ -41,7 +41,8 @@ Nastavte:
 - `NEXT_PUBLIC_SUPABASE_URL` - URL vašeho Supabase projektu
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Anon Key
 - `SUPABASE_SERVICE_ROLE_KEY` - Service Role Key
-- `ADMIN_PASSWORD` - heslo pro admin přihlášení
+- `ADMIN_PASSWORD_HASH` - base64-encoded bcrypt hash admin hesla
+- `SESSION_SECRET` - tajný klíč pro podepisování session cookies
 - `NEXT_PUBLIC_APP_URL` - URL aplikace (pro QR kódy)
 
 ### 3. Import dat
@@ -66,7 +67,7 @@ Aplikace poběží na `http://localhost:3000`.
 1. Pushněte kód na GitHub
 2. Importujte projekt na [vercel.com](https://vercel.com)
 3. Nastavte Environment Variables (stejné jako `.env.local`)
-4. V DNS nastavte CNAME záznam: `store.tatamy.cz` → `cname.vercel-dns.com`
+4. V DNS nastavte CNAME záznam: `sklad.tatamy.cz` → `cname.vercel-dns.com`
 
 ## Stránky
 
