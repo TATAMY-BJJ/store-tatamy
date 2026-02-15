@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TATAMY Sklad
 
-## Getting Started
+Jednoduchý online skladový systém pro správu krabic s vybavením na turnaje TATAMY.
 
-First, run the development server:
+## Funkce
+
+- **QR kódy** na krabicích → naskenuj a uvidíš obsah
+- **Admin rozhraní** pro správu krabic, položek a sekcí
+- **Upozornění** na položky pod minimálním stavem
+- **CSV export** celého skladu
+- **Hromadné stažení** QR kódů jako ZIP
+
+## Tech stack
+
+- Next.js 14 (App Router)
+- Supabase (PostgreSQL)
+- Tailwind CSS
+- Vercel (hosting)
+
+## Nastavení
+
+### 1. Supabase
+
+1. Vytvořte účet na [supabase.com](https://supabase.com)
+2. Vytvořte nový projekt
+3. V SQL editoru spusťte obsah souboru `supabase-schema.sql`
+4. Poznamenejte si:
+   - Project URL (`https://xxxxx.supabase.co`)
+   - Anon Key (z Settings → API)
+   - Service Role Key (z Settings → API)
+
+### 2. Konfigurace
+
+Zkopírujte `.env.local.example` na `.env.local` a vyplňte:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.local.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Nastavte:
+- `NEXT_PUBLIC_SUPABASE_URL` - URL vašeho Supabase projektu
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Anon Key
+- `SUPABASE_SERVICE_ROLE_KEY` - Service Role Key
+- `ADMIN_PASSWORD` - heslo pro admin přihlášení
+- `NEXT_PUBLIC_APP_URL` - URL aplikace (pro QR kódy)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Import dat
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Umístěte CSV soubory do složky `data/` a spusťte:
 
-## Learn More
+```bash
+npx tsx scripts/import-data.ts
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 4. Lokální vývoj
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm install
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Aplikace poběží na `http://localhost:3000`.
 
-## Deploy on Vercel
+### 5. Deploy na Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Pushněte kód na GitHub
+2. Importujte projekt na [vercel.com](https://vercel.com)
+3. Nastavte Environment Variables (stejné jako `.env.local`)
+4. V DNS nastavte CNAME záznam: `store.tatamy.cz` → `cname.vercel-dns.com`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Stránky
+
+| URL | Popis |
+|-----|-------|
+| `/` | Přehled skladu (veřejný) |
+| `/box/{id}` | Detail krabice (cíl QR kódu) |
+| `/admin` | Admin přihlášení |
+| `/admin/dashboard` | Admin dashboard |
+| `/admin/box/{id}` | Editace krabice |
+| `/admin/sections` | Správa sekcí |
+| `/admin/alerts` | Položky pod minimem |
