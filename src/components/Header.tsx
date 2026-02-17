@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import GlobalSearch from './GlobalSearch';
 
 interface HeaderProps {
@@ -25,7 +26,14 @@ export default function Header({ showBackButton, backHref = '/', backLabel = 'Zp
             </Link>
           )}
           <Link href={admin ? '/admin/dashboard' : '/'} className="flex items-center gap-2">
-            <span className="font-bold text-lg tracking-tight">TATAMY</span>
+            <Image
+              src="/tatamy-logo.png"
+              alt="TATAMY"
+              width={120}
+              height={32}
+              className="h-8 w-auto"
+              priority
+            />
             <span className="text-tatamy-red font-semibold text-sm">SKLAD</span>
           </Link>
         </div>
