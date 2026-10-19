@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { isAuthenticated } from '@/lib/auth';
-import { parseNumericValue } from '@/lib/types';
+import { stockStatus } from '@/lib/stock';
 
 // GET /api/alerts - Položky pod minimálním stavem (admin)
 export async function GET() {
@@ -11,7 +11,7 @@ export async function GET() {
 
   const { data: items, error } = await supabase
     .from('items')
-    .select('*, box:boxes(name, section:sections(name))')
+    .select('*, box:boxes(name, section:sections(name)), lendings(*)')
     .not('min_quantity', 'is', null);
 
   if (error) {
@@ -21,11 +21,9 @@ export async function GET() {
 
   // Filtrovat položky pod minimem
   const alerts = (items || []).filter((item) => {
-    const qty = parseNumericValue(item.quantity);
-    const minQty = parseNumericValue(item.min_quantity);
-    if (qty === null || minQty === null) return false;
-    return qty < minQty;
+    return (stockStatus(item).missing ?? 0) > 0;
   }).map((item) => ({
+    ...stockStatus(item),
     id: item.id,
     name: item.name,
     quantity: item.quantity,

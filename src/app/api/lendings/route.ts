@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('DB error:', error.message);
-      return NextResponse.json({ error: 'Interní chyba serveru' }, { status: 500 });
+      return NextResponse.json({ error: error.code === 'P0001' ? error.message : 'Interní chyba serveru' }, { status: error.code === 'P0001' ? 409 : 500 });
     }
 
     return NextResponse.json(data, { status: 201 });

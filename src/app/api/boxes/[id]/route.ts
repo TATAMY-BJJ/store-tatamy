@@ -16,7 +16,7 @@ export async function GET(
 
   const { data, error } = await supabase
     .from('boxes')
-    .select('*, section:sections(*), items(*)')
+    .select('*, section:sections(*), items(*, lendings(*))')
     .eq('id', id)
     .single();
 
@@ -65,7 +65,7 @@ export async function PUT(
 
     if (error) {
       console.error('DB error:', error.message);
-      return NextResponse.json({ error: 'Interní chyba serveru' }, { status: 500 });
+      return NextResponse.json({ error: error.code === 'P0001' ? error.message : 'Interní chyba serveru' }, { status: error.code === 'P0001' ? 409 : 500 });
     }
 
     return NextResponse.json(data);
@@ -98,7 +98,7 @@ export async function DELETE(
 
   if (error) {
     console.error('DB error:', error.message);
-    return NextResponse.json({ error: 'Interní chyba serveru' }, { status: 500 });
+    return NextResponse.json({ error: error.code === 'P0001' ? error.message : 'Interní chyba serveru' }, { status: error.code === 'P0001' ? 409 : 500 });
   }
 
   return NextResponse.json({ success: true });

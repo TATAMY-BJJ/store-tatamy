@@ -26,7 +26,7 @@ function UndoToastItem({
   const [remaining, setRemaining] = useState(duration);
   const [executing, setExecuting] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startRef = useRef(Date.now());
+  const startRef = useRef(0);
   const doneRef = useRef(false);
 
   const doConfirm = useCallback(async () => {

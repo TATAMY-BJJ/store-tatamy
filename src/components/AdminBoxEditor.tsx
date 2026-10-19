@@ -3,7 +3,8 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Box, Section, Item, Lending } from '@/lib/types';
-import { isbelowMinimum } from '@/lib/types';
+import { stockStatus } from '@/lib/stock';
+import Link from 'next/link';
 import UndoToast, { type UndoAction } from './UndoToast';
 
 interface BoxOption {
@@ -22,6 +23,7 @@ export default function AdminBoxEditor({ box, sections, allBoxes }: Props) {
   const [sectionId, setSectionId] = useState<number | null>(box.section_id);
   const [items, setItems] = useState<Item[]>((box.items || []) as Item[]);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const [showNewItem, setShowNewItem] = useState(false);
   const [newItem, setNewItem] = useState({ name: '', quantity: '', min_quantity: '', note: '' });
   const [movingItemId, setMovingItemId] = useState<number | null>(null);
@@ -55,13 +57,16 @@ export default function AdminBoxEditor({ box, sections, allBoxes }: Props) {
   // --- Item handlers ---
   const handleUpdateItem = async (item: Item, field: string, value: string) => {
     try {
-      await fetch(`/api/items/${item.id}`, {
+      const res = await fetch(`/api/items/${item.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ [field]: value }),
       });
-      setItems(items.map((i) => (i.id === item.id ? { ...i, [field]: value || null } : i)));
-    } catch { /* ignore */ }
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Změnu se nepodařilo uložit.'); return; }
+      setError('');
+      setItems(items.map((i) => (i.id === item.id ? { ...i, ...data } : i)));
+    } catch { setError('Spojení selhalo. Změna nebyla potvrzena.'); }
   };
 
   const handleDeleteItem = (itemId: number) => {
@@ -78,7 +83,8 @@ export default function AdminBoxEditor({ box, sections, allBoxes }: Props) {
         id: actionId,
         message: `Položka "${item.name}" smazána`,
         onConfirm: async () => {
-          await fetch(`/api/items/${itemId}`, { method: 'DELETE' });
+          const res = await fetch(`/api/items/${itemId}`, { method: 'DELETE' });
+          if (!res.ok) { const data = await res.json(); setError(data.error); setItems(prev => [...prev.filter(i => i.id !== itemId), item]); }
         },
         onUndo: () => {
           // Vrátit položku zpět do seznamu
@@ -138,45 +144,39 @@ export default function AdminBoxEditor({ box, sections, allBoxes }: Props) {
   };
 
   // --- Lending handlers ---
-  const handleAddLending = async (itemId: number) => {
-    if (!newLending.lent_to.trim() || !newLending.quantity.trim()) return;
-    setSaving(true);
-    try {
-      const res = await fetch('/api/lendings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ item_id: itemId, ...newLending }),
-      });
-      if (res.ok) {
-        const created: Lending = await res.json();
-        setItems(items.map((i) =>
-          i.id === itemId
-            ? { ...i, lendings: [...(i.lendings || []), created] }
-            : i
-        ));
-        setNewLending({ lent_to: '', quantity: '', note: '' });
-        setLendingFormItemId(null);
-      }
-    } catch { /* ignore */ }
-    setSaving(false);
+  const reloadItems = async () => {
+    const res = await fetch(`/api/boxes/${box.id}`);
+    if (!res.ok) throw new Error('Obnovte stránku pro aktuální počty.');
+    const data = await res.json();
+    setItems(data.items || []);
   };
-
-  const handleDeleteLending = async (lendingId: number, itemId: number, lentTo: string) => {
-    if (!confirm(`Vrátit výpůjčku od "${lentTo}"?`)) return;
+  const handleAddLending = async (itemId: number) => {
+    setSaving(true); setError('');
+    try {
+      const res = await fetch('/api/lendings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item_id: itemId, ...newLending }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      await reloadItems();
+      setNewLending({ lent_to: '', quantity: '', note: '' }); setLendingFormItemId(null);
+    } catch (e) { setError(e instanceof Error ? e.message : 'Výpůjčku se nepodařilo uložit.'); }
+    finally { setSaving(false); }
+  };
+  const handleDeleteLending = async (lendingId: number, _itemId: number, lentTo: string) => {
+    if (saving || !confirm(`Vrátit výpůjčku od "${lentTo}"?`)) return;
+    setSaving(true); setError('');
     try {
       const res = await fetch(`/api/lendings/${lendingId}`, { method: 'DELETE' });
-      if (res.ok) {
-        setItems(items.map((i) =>
-          i.id === itemId
-            ? { ...i, lendings: (i.lendings || []).filter((l) => l.id !== lendingId) }
-            : i
-        ));
-      }
-    } catch { /* ignore */ }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      await reloadItems();
+    } catch (e) { setError(e instanceof Error ? e.message : 'Vrácení se nepodařilo uložit.'); }
+    finally { setSaving(false); }
   };
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-6">
+      {error && <p role="alert" className="p-4 mb-4 bg-red-50 text-red-800 rounded-lg">{error}</p>}
+      <Link href={`/admin/inventories?box=${box.id}`} className="inline-block mb-4 rounded-lg bg-tatamy-black text-white px-4 py-3">Přepočítat tuto krabici v inventuře</Link>
       {/* Hlavička krabice */}
       <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
         <h1 className="text-xl font-bold text-tatamy-black mb-4">Editace krabice</h1>
@@ -303,12 +303,19 @@ export default function AdminBoxEditor({ box, sections, allBoxes }: Props) {
         ) : (
           <div className="divide-y divide-gray-100">
             {items.map((item) => {
-              const belowMin = isbelowMinimum(item.quantity, item.min_quantity);
+              const belowMin = (stockStatus(item).missing ?? 0) > 0;
               const lendings = (item.lendings || []) as Lending[];
               const hasLendings = lendings.length > 0;
 
               return (
-                <div key={item.id} className={`${belowMin ? 'bg-red-50' : ''}`}>
+                <div key={`${item.id}-${item.quantity}`} className={`${belowMin ? 'bg-red-50' : ''}`}>
+                  <div className="px-4 pt-3 flex flex-wrap items-center gap-3">
+                    <label className="text-sm">Typ položky <select aria-label={`Typ položky ${item.name}`} value={item.item_type || 'unclassified'} onChange={e => handleUpdateItem(item, 'item_type', e.target.value)} className="ml-2 border rounded-lg p-2 min-h-11">
+                      <option value="unclassified">Vyberte typ</option><option value="asset">Dlouhodobý majetek</option><option value="consumable">Spotřební materiál</option>
+                    </select></label>
+                    <span className="text-sm text-gray-600">{item.last_checked_date ? `Přepočítáno: ${new Date(item.last_checked_date + 'T12:00:00').toLocaleDateString('cs-CZ')}` : 'Dosud nepřepočítáno'}</span>
+                  </div>
+                  {item.legacy_quantity && <p className="px-4 py-2 text-sm text-gray-600">Původní text množství (pro informaci): {item.legacy_quantity}</p>}
                   {/* Hlavní řádek položky */}
                   <div className="px-4 py-2">
                     {/* Desktop: vše na jednom řádku */}

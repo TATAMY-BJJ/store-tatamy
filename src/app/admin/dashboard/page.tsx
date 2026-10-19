@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
-import { parseNumericValue } from '@/lib/types';
+import { stockStatus } from '@/lib/stock';
+import type { Item } from '@/lib/types';
 import Header from '@/components/Header';
 import AdminDashboardClient from '@/components/AdminDashboardClient';
 
@@ -13,25 +14,25 @@ export default async function AdminDashboard() {
   }
 
   // Načíst krabice
-  const { data: boxes } = await supabase
+  const { data: boxes, error: boxesError } = await supabase
     .from('boxes')
-    .select('*, section:sections(id, name, responsible_person, color), items(*)')
+    .select('*, section:sections(id, name, responsible_person, color), items(*, lendings(*))')
     .order('name');
 
   // Načíst sekce
-  const { data: sections } = await supabase
+  const { data: sections, error: sectionsError } = await supabase
     .from('sections')
     .select('*')
     .order('name');
 
+  if (boxesError || sectionsError) throw new Error('Nepodařilo se načíst sklad. Obnovte stránku.');
+
   // Spočítat alerty
   let alertCount = 0;
   for (const box of boxes || []) {
-    const items = (box.items || []) as Array<{ quantity: string | null; min_quantity: string | null }>;
+    const items = (box.items || []) as Item[];
     for (const item of items) {
-      const qty = parseNumericValue(item.quantity);
-      const minQty = parseNumericValue(item.min_quantity);
-      if (qty !== null && minQty !== null && qty < minQty) {
+      if ((stockStatus(item).missing ?? 0) > 0) {
         alertCount++;
       }
     }

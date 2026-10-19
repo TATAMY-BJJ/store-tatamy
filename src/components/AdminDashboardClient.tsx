@@ -17,6 +17,7 @@ export default function AdminDashboardClient({ initialBoxes, initialSections, al
   const [newBoxName, setNewBoxName] = useState('');
   const [newBoxSectionId, setNewBoxSectionId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const [boxes, setBoxes] = useState<Box[]>(initialBoxes);
   const [undoActions, setUndoActions] = useState<UndoAction[]>([]);
   const router = useRouter();
@@ -84,14 +85,15 @@ export default function AdminDashboardClient({ initialBoxes, initialSections, al
     // Optimisticky odebrat z UI
     setBoxes((prev) => prev.filter((b) => b.id !== boxId));
 
-    const actionId = `delete-box-${boxId}-${Date.now()}`;
+    const actionId = `delete-box-${boxId}-${crypto.randomUUID()}`;
     setUndoActions((prev) => [
       ...prev,
       {
         id: actionId,
         message: `Krabice "${boxName}" smazána (${itemCount} položek)`,
         onConfirm: async () => {
-          await fetch(`/api/boxes/${boxId}`, { method: 'DELETE' });
+          const res = await fetch(`/api/boxes/${boxId}`, { method: 'DELETE' });
+          if (!res.ok) { const data = await res.json(); setError(data.error); setBoxes(prev => [...prev.filter(b => b.id !== boxId), deletedBox]); }
         },
         onUndo: () => {
           setBoxes((prev) => [...prev, deletedBox]);
@@ -115,6 +117,8 @@ export default function AdminDashboardClient({ initialBoxes, initialSections, al
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-6">
+      {error && <p role="alert" className="p-4 mb-4 bg-red-50 text-red-800 rounded-lg">{error}</p>}
+      <Link className="inline-block mb-4 underline py-3" href="/admin/alerts">Zásoby a výpůjčky — co doplnit nebo stáhnout zpět</Link>
       {/* Alert banner */}
       {alertCount > 0 && (
         <Link
