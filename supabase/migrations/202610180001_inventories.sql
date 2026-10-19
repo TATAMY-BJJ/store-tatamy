@@ -1,5 +1,9 @@
 -- Apply only after the preflight described in docs/inventories.md.
 BEGIN;
+-- All writes use authenticated server routes. The legacy lending policy permits
+-- PUBLIC writes; revoke table write privileges before enabling stock triggers.
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+ ON public.sections, public.boxes, public.items, public.lendings FROM anon, authenticated;
 ALTER TABLE public.items ADD COLUMN item_type text NOT NULL DEFAULT 'unclassified'
   CHECK (item_type IN ('unclassified', 'asset', 'consumable'));
 ALTER TABLE public.items ADD COLUMN last_checked_at timestamptz;

@@ -147,6 +147,7 @@ test('migration: stock movements, inventory completeness, dated immutable histor
       /permission denied/,
     );
     await assert.rejects(db.exec('SELECT * FROM inventory_entries'), /permission denied/);
+    await assert.rejects(db.exec('DELETE FROM lendings'), /permission denied/);
     await db.exec('RESET ROLE');
   } finally {
     await db.close();

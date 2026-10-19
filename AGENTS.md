@@ -24,7 +24,7 @@
 
 - `src/lib/stock.ts`: shared stock arithmetic and inventory types.
 - `src/app/api/inventories/route.ts`: authenticated request validation and RPC calls.
-- `supabase/migrations/202610180001_inventories.sql`: transactional inventory functions, history and lending movements. Not yet applied to production; once applied, use a new migration for further schema changes.
+- `supabase/migrations/202610180001_inventories.sql`: transactional inventory functions, history and lending movements. Applied to production on 2026-10-19; use a new migration for further schema changes. Do not run it again.
 - `src/components/InventoriesClient.tsx`: inventory workflow and filtering/pagination.
 - `docs/inventories.md`: rollout, verification and operational caveats.
 

@@ -57,4 +57,11 @@ Bez konfigurace Supabase lze ověřit kód a lokální databázové testy; nelze
 
 Ověřeno 19. 10. 2026: unit/SQL testy, migrace na exportu 428 položek, HTTP workflow, lint, TypeScript, produkční build a prohlížeč na šířkách 375 a 1440 px. Sedm původních textových množství zachováno. Vizuální kontrola odhalila a opravila rozdílné formátování SQL DATE v místním adaptéru; test výslovně odmítá `Invalid Date`.
 
-Před produkčním nasazením stále zbývá: spustit read-only `supabase/preflight.sql` v SQL Editoru správného projektu, porovnat skutečné triggery/RLS/oprávnění s migrací, ověřit úplnou zálohu a koordinovat přepnutí aplikace. Produkční data ani schéma zatím změněny nebyly.
+### Produkční nasazení 19. 10. 2026
+
+- Migrace `202610180001_inventories.sql` aplikována do projektu `ozmzjgsxnofxcelrbmpe`. Znovu ji nespouštět; další změny patří do nové migrace.
+- Vercel projekt `store-tatamy`, deployment `dpl_De4je7WjaTwTPcvRK1Bo9zpJqXCL`, přepnut na `https://sklad.tatamy.cz`. Produkční prostředí i serverový klíč ověřeny.
+- Před přepnutím zkontrolováno skutečné schéma, omezení, triggery, RLS a oprávnění. Supabase nemělo dostupnou automatickou zálohu. Lokálně je uložen export čtyř aplikačních tabulek a jejich schématu v `.local/warehouse-before-migration.sql`, původní metadata v `.local/production-schema-report.json` a `.local/production-sequences.json`. Jde o zálohu skladové části, nikoliv celého Supabase projektu (Auth, Storage, systémová schémata). Obnova dat do izolovaného PostgreSQL a následná migrace byly úspěšně vyzkoušeny.
+- Během přepnutí byly dočasně odebrány zápisové pravomoci serverové roli. Migrace pod zámkem tabulek ověřila shodu dat se zálohou; po přepnutí aplikace byly serverové zápisy obnoveny. Veřejným rolím zůstaly zápisy do původních tabulek odebrané, protože stará politika výpůjček dovolovala veřejný zápis. Čtení a zápisy aplikace obsluhuje server.
+- Po nasazení: 428 položek, 7 zachovaných textových množství, 0 výpůjček, 0 inventur. Úvodní stránka, administrace, inventury, upozornění a API seznamu krabic vracejí HTTP 200; administrační stránky zkontrolovány s platnou serverovou session. Do produkce nebyla vložena testovací data.
+- Provozní exporty obsahují skutečná data, jsou ignorované Gitem a nesmějí se publikovat. Při obnově používat izolovanou databázi; neprovádět slepé přepsání novějších skladových pohybů.
