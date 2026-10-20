@@ -50,6 +50,10 @@ export interface Item {
   name: string;
   quantity: string | null;
   min_quantity: string | null;
+  item_type?: "unclassified" | "asset" | "consumable";
+  last_checked_at?: string | null;
+  last_checked_date?: string | null;
+  legacy_quantity?: string | null;
   note: string | null;
   created_at: string;
   lendings?: Lending[];
@@ -64,8 +68,9 @@ export interface AlertItem extends Item {
 export function parseNumericValue(value: string | null): number | null {
   if (!value) return null;
   const trimmed = value.trim();
-  const num = Number(trimmed);
-  return isNaN(num) ? null : num;
+  if (!/^\d+([.,]\d+)?$/.test(trimmed)) return null;
+  const num = Number(trimmed.replace(",", "."));
+  return Number.isFinite(num) ? num : null;
 }
 
 export function isbelowMinimum(quantity: string | null, minQuantity: string | null): boolean {

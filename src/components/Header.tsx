@@ -14,7 +14,7 @@ interface HeaderProps {
 export default function Header({ showBackButton, backHref = '/', backLabel = 'Zpět', admin }: HeaderProps) {
   return (
     <header className="bg-tatamy-black text-white sticky top-0 z-50 shadow-md">
-      <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
+      <div className="max-w-5xl mx-auto px-4 py-3 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3">
         {/* Levá strana - logo + zpět */}
         <div className="flex items-center gap-3 shrink-0">
           {showBackButton && (
@@ -39,14 +39,14 @@ export default function Header({ showBackButton, backHref = '/', backLabel = 'Zp
         </div>
 
         {/* Střed - vyhledávání */}
-        <div className="flex-1 mx-2 hidden sm:block">
+        <div className="flex-1 min-w-0 mx-2 hidden sm:block">
           <GlobalSearch admin={admin} />
         </div>
 
         {/* Pravá strana */}
         <div className="flex items-center gap-2 shrink-0">
           {admin ? (
-            <span className="text-xs text-gray-400 hidden sm:inline">Admin</span>
+            <Link href="/admin/inventories" className="text-sm px-3 py-3 rounded-md hover:bg-white/20">Inventury</Link>
           ) : (
             <Link
               href="/"

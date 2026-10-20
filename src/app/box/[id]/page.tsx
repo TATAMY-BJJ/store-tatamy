@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { isAuthenticated } from '@/lib/auth';
-import { isbelowMinimum } from '@/lib/types';
+import { stockStatus } from '@/lib/stock';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -33,6 +33,8 @@ export default async function BoxPage({ params }: BoxPageProps) {
     quantity: string | null;
     min_quantity: string | null;
     note: string | null;
+    last_checked_date?: string | null;
+    legacy_quantity?: string | null;
     lendings?: Array<{ id: number; lent_to: string; quantity: string }>;
   }>;
 
@@ -86,7 +88,7 @@ export default async function BoxPage({ params }: BoxPageProps) {
               </thead>
               <tbody>
                 {items.map((item) => {
-                  const belowMin = isbelowMinimum(item.quantity, item.min_quantity);
+                  const belowMin = (stockStatus(item).missing ?? 0) > 0;
                   const lendings = item.lendings || [];
                   const hasLendings = lendings.length > 0;
                   return (
@@ -100,6 +102,8 @@ export default async function BoxPage({ params }: BoxPageProps) {
                         <span className={belowMin ? 'text-tatamy-red font-medium' : ''}>
                           {item.name}
                         </span>
+                        {item.legacy_quantity && <p className="text-xs text-gray-600">Původní text množství: {item.legacy_quantity}</p>}
+                        {item.last_checked_date && <p className="text-xs text-gray-600">Přepočítáno {new Date(item.last_checked_date + 'T12:00:00').toLocaleDateString('cs-CZ')}</p>}
                         {/* Výpůjčky */}
                         {hasLendings && (
                           <div className="flex flex-wrap gap-1 mt-1">

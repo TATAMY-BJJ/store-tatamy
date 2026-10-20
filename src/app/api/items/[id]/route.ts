@@ -28,6 +28,10 @@ export async function PUT(
       if (!name) return NextResponse.json({ error: 'Neplatný název' }, { status: 400 });
       updateData.name = name;
     }
+    if (body.item_type !== undefined) {
+      if (!['asset', 'consumable', 'unclassified'].includes(body.item_type)) return NextResponse.json({ error: 'Neplatný typ položky' }, { status: 400 });
+      updateData.item_type = body.item_type;
+    }
     if (body.quantity !== undefined) updateData.quantity = sanitizeString(body.quantity, 500);
     if (body.min_quantity !== undefined) updateData.min_quantity = sanitizeString(body.min_quantity, 500);
     if (body.note !== undefined) updateData.note = sanitizeString(body.note, 500);
@@ -47,7 +51,7 @@ export async function PUT(
 
     if (error) {
       console.error('DB error:', error.message);
-      return NextResponse.json({ error: 'Interní chyba serveru' }, { status: 500 });
+      return NextResponse.json({ error: error.code === 'P0001' ? error.message : 'Interní chyba serveru' }, { status: error.code === 'P0001' ? 409 : 500 });
     }
 
     return NextResponse.json(data);
@@ -80,7 +84,7 @@ export async function DELETE(
 
   if (error) {
     console.error('DB error:', error.message);
-    return NextResponse.json({ error: 'Interní chyba serveru' }, { status: 500 });
+    return NextResponse.json({ error: error.code === 'P0001' ? error.message : 'Interní chyba serveru' }, { status: error.code === 'P0001' ? 409 : 500 });
   }
 
   return NextResponse.json({ success: true });

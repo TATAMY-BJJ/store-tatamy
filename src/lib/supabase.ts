@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+// Server-only override allows offline tests without touching the production project.
+const supabaseUrl = process.env.SUPABASE_SERVER_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 
 // Všechny dotazy jdou přes server (Server Components + API routes),
 // takže bezpečně použijeme service_role klíč pro vše.
@@ -26,5 +27,8 @@ export const supabase = {
 
 // Pro zápis (admin operace) - stejný klient
 export function getServiceSupabase(): SupabaseClient {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('Chybí serverový Supabase klíč. Zápis s veřejným klíčem není povolen.');
+  }
   return getClient();
 }

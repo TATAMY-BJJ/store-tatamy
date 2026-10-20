@@ -12,7 +12,7 @@ Jednoduchý online skladový systém pro správu krabic s vybavením na turnaje 
 
 ## Tech stack
 
-- Next.js 14 (App Router)
+- Next.js 16 (App Router)
 - Supabase (PostgreSQL)
 - Tailwind CSS
 - Vercel (hosting)
@@ -31,10 +31,10 @@ Jednoduchý online skladový systém pro správu krabic s vybavením na turnaje 
 
 ### 2. Konfigurace
 
-Zkopírujte `.env.local.example` na `.env.local` a vyplňte:
+Zkopírujte `.env.example` na `.env.local` a vyplňte:
 
 ```bash
-cp .env.local.example .env.local
+cp .env.example .env.local
 ```
 
 Nastavte:
@@ -80,3 +80,21 @@ Aplikace poběží na `http://localhost:3000`.
 | `/admin/box/{id}` | Editace krabice |
 | `/admin/sections` | Správa sekcí |
 | `/admin/alerts` | Položky pod minimem |
+
+
+## Inventury podle data (rozpracovaná aktualizace)
+
+Pravidla datového modelu a ověřovací příkazy: [AGENTS.md](./AGENTS.md).
+Postup nasazení, zachování historických údajů a provozní omezení: [docs/inventories.md](./docs/inventories.md).
+
+Pro novou prázdnou databázi po základním schématu aplikujte migrace ze `supabase/migrations/` v pořadí názvů. Na existující produkci základní schéma znovu nespouštějte; nejprve proveďte kontrolu a zálohu podle dokumentace.
+
+Místní demo inventur se smyšlenými daty:
+
+```bash
+npm ci
+npm run build
+npm run preview:local
+```
+
+Otevřete `http://127.0.0.1:3131/admin`, heslo `preview-local`. Demo nepoužívá produkční databázi. Běžné editace skladu nejsou součástí demo adaptéru.

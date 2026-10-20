@@ -52,12 +52,7 @@ export default function GlobalSearch({ admin }: { admin?: boolean }) {
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (query.trim().length < 2) {
-      setResults(null);
-      return;
-    }
-    setLoading(true);
-    debounceRef.current = setTimeout(() => doSearch(query), 250);
+    debounceRef.current = setTimeout(() => doSearch(query), query.trim().length < 2 ? 0 : 250);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query, doSearch]);
 
