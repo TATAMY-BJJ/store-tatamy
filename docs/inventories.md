@@ -8,7 +8,7 @@
 - Inventura má datum zahájení; každá položka vlastní datum skutečného přepočítání a oddělený čas zápisu.
 - První přepočítání porovná skutečnost s tehdy evidovaným celkem. Oprava zachová původní očekávaný počet. Nečíselný původní počet vytvoří výchozí stav bez vymyšleného rozdílu.
 - `legacy_quantity` uchovává původní textový rozpis (například velikosti oblečení). Je vidět v detailu i historii, ale není to aktuální počet ani automaticky aktualizovaný seznam variant. `original_quantity` a `original_note` uchovávají vstupní údaje při prvním přepočítání. Číselný počet vždy zadává člověk.
-- Jedna rozpracovaná inventura. Nové položky do ní přibývají automaticky; položky lze mazat až po uzavření a vrácení výpůjček.
+- Jedna rozpracovaná inventura. Nové položky do ní přibývají automaticky. Položku lze smazat i během inventury; zmizí jen její otevřený řádek a uzavřená historie zůstane. Aktivní výpůjčku je nejdřív třeba vrátit.
 - Uzavření vyžaduje kontrolu všech položek. Historie uchovává kopie názvů, minima, typu, počtů i výpůjček a není závislá na existenci živé položky.
 - Výpůjčka automaticky odečte počet ze skladu. Vrácení jej přičte a výpůjčku přesune do `lending_history`. Staré již smazané výpůjčky nelze zpětně obnovit.
 

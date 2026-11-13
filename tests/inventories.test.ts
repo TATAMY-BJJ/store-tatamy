@@ -35,6 +35,7 @@ test('migration: stock movements, inventory completeness, dated immutable histor
       "INSERT INTO boxes(name) VALUES('Vybavení'); INSERT INTO items(box_id,name,quantity,min_quantity) VALUES(1,'Stoly','97','100'); INSERT INTO lendings(item_id,lent_to,quantity) VALUES(1,'Eva','3');",
     );
     await db.exec(readFileSync('supabase/migrations/202610180001_inventories.sql', 'utf8'));
+    await db.exec(readFileSync('supabase/migrations/202611130002_delete_during_inventory.sql', 'utf8'));
     const scalar = async (sql: string) =>
       Object.values((await db.query(sql)).rows[0] as Record<string, unknown>)[0];
     assert.equal(await scalar('SELECT quantity FROM items WHERE id=1'), '97');
@@ -75,7 +76,7 @@ test('migration: stock movements, inventory completeness, dated immutable histor
       ),
       -2,
     );
-    await assert.rejects(db.exec('DELETE FROM items WHERE id=1'), /uzavření/);
+    await assert.rejects(db.exec('DELETE FROM items WHERE id=1'), /výpůjčky/);
     await db.exec("INSERT INTO items(box_id,name,quantity) VALUES(1,'Páska','2 balení')");
     assert.equal(await scalar('SELECT count(*)::int FROM inventory_entries'), 2);
     await assert.rejects(
@@ -95,6 +96,12 @@ test('migration: stock movements, inventory completeness, dated immutable histor
       '2 balení',
     );
     await db.exec("SELECT check_inventory_item(1,2,3,(now() AT TIME ZONE 'Europe/Prague')::date)");
+    await db.exec("INSERT INTO items(box_id,name,quantity,item_type) VALUES(1,'Perník Jahoda','4','consumable')");
+    assert.equal(await scalar("SELECT count(*)::int FROM inventory_entries WHERE item_name='Perník Jahoda'"), 1);
+    await db.exec("DELETE FROM items WHERE name='Perník Jahoda'");
+    assert.equal(await scalar("SELECT count(*)::int FROM items WHERE name='Perník Jahoda'"), 0);
+    assert.equal(await scalar("SELECT count(*)::int FROM inventory_entries WHERE item_name='Perník Jahoda'"), 0);
+    assert.equal(await scalar('SELECT count(*)::int FROM inventory_entries'), 2);
     assert.equal(
       await scalar('SELECT legacy_quantity FROM inventory_entries WHERE item_id=2'),
       '2 balení',

@@ -82,12 +82,21 @@ export default function AdminBoxEditor({ box, sections, allBoxes }: Props) {
     finally { setUpdatingIds(prev => prev.filter(id => id !== item.id)); }
   };
 
+  const restoreItem = (item: Item, index: number) => {
+    setItems((prev) => {
+      if (prev.some((entry) => entry.id === item.id)) return prev;
+      const next = [...prev];
+      next.splice(Math.min(Math.max(index, 0), next.length), 0, item);
+      return next;
+    });
+  };
+
   const handleDeleteItem = (itemId: number) => {
-    const item = items.find((i) => i.id === itemId);
+    const index = items.findIndex((entry) => entry.id === itemId);
+    const item = index >= 0 ? items[index] : undefined;
     if (!item) return;
 
-    // Optimisticky odebrat z UI
-    setItems((prev) => prev.filter((i) => i.id !== itemId));
+    setItems((prev) => prev.filter((entry) => entry.id !== itemId));
 
     const actionId = `delete-${itemId}-${Date.now()}`;
     setUndoActions((prev) => [
@@ -97,12 +106,13 @@ export default function AdminBoxEditor({ box, sections, allBoxes }: Props) {
         message: `Položka "${item.name}" smazána`,
         onConfirm: async () => {
           const res = await fetch(`/api/items/${itemId}`, { method: 'DELETE' });
-          if (!res.ok) { const data = await res.json(); setError(data.error); setItems(prev => [...prev.filter(i => i.id !== itemId), item]); }
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            setError(data.error || 'Položku se nepodařilo smazat.');
+            restoreItem(item, index);
+          }
         },
-        onUndo: () => {
-          // Vrátit položku zpět do seznamu
-          setItems((prev) => [...prev, item]);
-        },
+        onUndo: () => restoreItem(item, index),
       },
     ]);
   };

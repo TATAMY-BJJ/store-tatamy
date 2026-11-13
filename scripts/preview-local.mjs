@@ -19,6 +19,7 @@ await db.exec(
 );
 await db.exec(readFileSync('supabase/migrations/202610180001_inventories.sql', 'utf8'));
 await db.exec(readFileSync('supabase/migrations/202611130001_merch.sql', 'utf8'));
+await db.exec(readFileSync('supabase/migrations/202611130002_delete_during_inventory.sql', 'utf8'));
 await db.exec("UPDATE items SET price=600, photos=ARRAY['/tatamy-logo.png'], import_key='local:merch' WHERE id=2;");
 await db.exec(
   "UPDATE items SET item_type='asset' WHERE id=1; UPDATE items SET item_type='consumable' WHERE id=2; INSERT INTO lendings(item_id,lent_to,quantity) VALUES(1,'Testovací výpůjčka','3');",
