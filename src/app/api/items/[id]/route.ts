@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
 import { isAuthenticated } from '@/lib/auth';
 import { isValidId, sanitizeString } from '@/lib/validation';
+import { validPrice } from '@/lib/price';
 
 // PUT /api/items/[id] - Aktualizovat položku (admin)
 export async function PUT(
@@ -35,6 +36,12 @@ export async function PUT(
     if (body.quantity !== undefined) updateData.quantity = sanitizeString(body.quantity, 500);
     if (body.min_quantity !== undefined) updateData.min_quantity = sanitizeString(body.min_quantity, 500);
     if (body.note !== undefined) updateData.note = sanitizeString(body.note, 500);
+    if (body.price !== undefined) {
+      if (!validPrice(body.price)) {
+        return NextResponse.json({ error: 'Zadejte nezápornou cenu v Kč, nejvýše se dvěma desetinnými místy.' }, { status: 400 });
+      }
+      updateData.price = body.price;
+    }
     if (body.box_id !== undefined) {
       if (typeof body.box_id !== 'number' || !Number.isInteger(body.box_id) || body.box_id <= 0) {
         return NextResponse.json({ error: 'Neplatné box_id' }, { status: 400 });
@@ -42,18 +49,26 @@ export async function PUT(
       updateData.box_id = body.box_id;
     }
 
-    const { data, error } = await sb
+    let query = sb
       .from('items')
       .update(updateData)
-      .eq('id', id)
+      .eq('id', id);
+    if (body.quantity !== undefined && body.expected_quantity !== undefined) {
+      if (body.expected_quantity !== null && typeof body.expected_quantity !== 'string') {
+        return NextResponse.json({ error: 'Neplatný původní počet.' }, { status: 400 });
+      }
+      query = body.expected_quantity === null ? query.is('quantity', null) : query.eq('quantity', body.expected_quantity);
+    }
+    const { data, error } = await query
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('DB error:', error.message);
       return NextResponse.json({ error: error.code === 'P0001' ? error.message : 'Interní chyba serveru' }, { status: error.code === 'P0001' ? 409 : 500 });
     }
 
+    if (!data) return NextResponse.json({ error: 'Počet mezitím změnil někdo jiný nebo položka už neexistuje. Obnovte stránku a zadejte změnu znovu.' }, { status: 409 });
     return NextResponse.json(data);
   } catch {
     return NextResponse.json({ error: 'Chyba při aktualizaci položky' }, { status: 500 });

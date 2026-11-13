@@ -21,7 +21,7 @@ export async function GET() {
 
   // Generování CSV
   const BOM = '\uFEFF'; // Pro správné zobrazení češtiny v Excelu
-  const header = 'Krabice;Sekce;Zodpovědná osoba;Položka;Počet;Minimální počet;Poznámka;Půjčeno komu;Půjčeno kolik';
+  const header = 'Krabice;Sekce;Zodpovědná osoba;Položka;Počet;Minimální počet;Poznámka;Půjčeno komu;Půjčeno kolik;Cena Kč;Fotografie';
   const rows: string[] = [];
 
   for (const box of boxes || []) {
@@ -31,6 +31,8 @@ export async function GET() {
       quantity: string | null;
       min_quantity: string | null;
       note: string | null;
+      price?: number | null;
+      photos?: string[];
       lendings?: Array<{ lent_to: string; quantity: string }>;
     }>;
 
@@ -39,7 +41,7 @@ export async function GET() {
         escapeCsv(sanitizeCsvCell(box.name)),
         escapeCsv(sanitizeCsvCell(section?.name || '')),
         escapeCsv(sanitizeCsvCell(section?.responsible_person || '')),
-        '', '', '', '', '', ''
+        '', '', '', '', '', '', '', ''
       ].join(';'));
     } else {
       for (const item of items) {
@@ -56,6 +58,8 @@ export async function GET() {
           escapeCsv(sanitizeCsvCell(item.note || '')),
           escapeCsv(sanitizeCsvCell(lentToStr)),
           escapeCsv(sanitizeCsvCell(lentQtyStr)),
+          escapeCsv(item.price == null ? '' : String(item.price).replace('.', ',')),
+          escapeCsv((item.photos || []).join(' | ')),
         ].join(';'));
       }
     }

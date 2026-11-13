@@ -1,0 +1,42 @@
+import {test,expect} from '@playwright/test';
+import {mkdir} from 'node:fs/promises';
+
+test('sellers can save counts and prices on mobile, with conflict feedback',async({page})=>{
+  await page.setViewportSize({width:375,height:812});
+  await page.goto('/admin');
+  await page.locator('input[type=password]').fill('preview-local');
+  await page.getByRole('button',{name:/Přihlásit/}).click();
+  await page.waitForURL('**/admin/dashboard');
+  await page.goto('/admin/box/1');
+  const price=page.getByLabel('Cena Trička',{exact:true});
+  await expect(price).toBeVisible();
+  await price.fill('650');
+  await price.press('Tab');
+  await expect(page.getByRole('status')).toHaveText('Uloženo: Trička');
+  const count=page.getByLabel('Počet Trička',{exact:true}).filter({visible:true});
+  await count.fill('5');
+  await count.press('Tab');
+  await expect(count).toBeEnabled();
+  await expect(page.getByRole('status')).toHaveText('Uloženo: Trička');
+  await page.reload();
+  await expect(price).toHaveValue(/^650(?:\.00)?$/);
+  await expect(count).toHaveValue('5');
+  await expect(page.getByRole('img',{name:'Trička, fotografie 1'})).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await mkdir('.local/qa',{recursive:true});
+  await page.evaluate(()=>window.scrollTo(0,0));
+  await page.screenshot({path:'.local/qa/merch-mobile.png',fullPage:true});
+  // Another seller updates the same stock while this page still displays 5.
+  const response=await page.request.put('/api/items/2',{data:{quantity:'4',expected_quantity:'5'}});
+  expect(response.status()).toBe(200);
+  await count.fill('3');
+  await count.press('Tab');
+  await expect(page.getByRole('alert').filter({hasText:'Počet mezitím změnil'})).toBeVisible();
+  await page.reload();
+  await expect(count).toHaveValue('4');
+  await page.setViewportSize({width:1440,height:1000});
+  await page.evaluate(()=>window.scrollTo(0,0));
+  await page.screenshot({path:'.local/qa/merch-desktop.png',fullPage:true});
+  await page.goto('/box/1');
+  await expect(page.getByText(/650.*Kč/)).toBeVisible();
+});

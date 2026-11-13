@@ -6,6 +6,8 @@ import type { Box, Section, Item, Lending } from '@/lib/types';
 import { stockStatus } from '@/lib/stock';
 import Link from 'next/link';
 import UndoToast, { type UndoAction } from './UndoToast';
+import ItemPhotos from './ItemPhotos';
+import { validPrice } from '@/lib/price';
 
 interface BoxOption {
   id: number;
@@ -24,6 +26,8 @@ export default function AdminBoxEditor({ box, sections, allBoxes }: Props) {
   const [items, setItems] = useState<Item[]>((box.items || []) as Item[]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [saveMessage, setSaveMessage] = useState('');
+  const [updatingIds, setUpdatingIds] = useState<number[]>([]);
   const [showNewItem, setShowNewItem] = useState(false);
   const [newItem, setNewItem] = useState({ name: '', quantity: '', min_quantity: '', note: '' });
   const [movingItemId, setMovingItemId] = useState<number | null>(null);
@@ -56,17 +60,26 @@ export default function AdminBoxEditor({ box, sections, allBoxes }: Props) {
 
   // --- Item handlers ---
   const handleUpdateItem = async (item: Item, field: string, value: string) => {
+    const price = value.trim() === '' ? null : Number(value.replace(',', '.'));
+    if (field === 'price' && !validPrice(price)) {
+      setError('Zadejte nezápornou cenu v Kč, nejvýše se dvěma desetinnými místy.');
+      return;
+    }
+    setSaveMessage('Ukládám změnu…');
+    setUpdatingIds(prev => [...prev, item.id]);
     try {
       const res = await fetch(`/api/items/${item.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [field]: value }),
+        body: JSON.stringify({ [field]: field === 'price' ? price : value, ...(field === 'quantity' ? { expected_quantity: item.quantity } : {}) }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || 'Změnu se nepodařilo uložit.'); return; }
+      if (!res.ok) { setSaveMessage(''); setError(data.error || 'Změnu se nepodařilo uložit.'); return; }
       setError('');
-      setItems(items.map((i) => (i.id === item.id ? { ...i, ...data } : i)));
-    } catch { setError('Spojení selhalo. Změna nebyla potvrzena.'); }
+      setItems(prev => prev.map((i) => (i.id === item.id ? { ...i, ...data } : i)));
+      setSaveMessage(`Uloženo: ${data.name}`);
+    } catch { setSaveMessage(''); setError('Spojení selhalo. Změna nebyla potvrzena.'); }
+    finally { setUpdatingIds(prev => prev.filter(id => id !== item.id)); }
   };
 
   const handleDeleteItem = (itemId: number) => {
@@ -176,6 +189,7 @@ export default function AdminBoxEditor({ box, sections, allBoxes }: Props) {
   return (
     <main className="max-w-5xl mx-auto px-4 py-6">
       {error && <p role="alert" className="p-4 mb-4 bg-red-50 text-red-800 rounded-lg">{error}</p>}
+      <p role="status" className={`${updatingIds.length || saveMessage ? 'fixed bottom-3 left-4 right-4 z-50 rounded-lg shadow-lg pointer-events-none' : 'mb-3'} bg-white text-sm text-green-800 px-3 py-2 min-h-9`}>{updatingIds.length ? 'Ukládám změnu…' : saveMessage || 'Změny položek se ukládají po opuštění upravovaného pole.'}</p>
       <Link href={`/admin/inventories?box=${box.id}`} className="inline-block mb-4 rounded-lg bg-tatamy-black text-white px-4 py-3">Přepočítat tuto krabici v inventuře</Link>
       {/* Hlavička krabice */}
       <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
@@ -308,7 +322,14 @@ export default function AdminBoxEditor({ box, sections, allBoxes }: Props) {
               const hasLendings = lendings.length > 0;
 
               return (
-                <div key={`${item.id}-${item.quantity}`} className={`${belowMin ? 'bg-red-50' : ''}`}>
+                <fieldset disabled={updatingIds.includes(item.id)} key={`${item.id}-${item.quantity}`} className={`min-w-0 ${belowMin ? 'bg-red-50' : ''}`}>
+                  {(item.import_key || item.price != null || !!item.photos?.length) && <div className="px-4 pt-3">
+                    <p className="font-medium break-words">{item.name}</p>
+                    <ItemPhotos photos={item.photos} name={item.name} />
+                    <label className="inline-flex items-center gap-2 text-sm">Cena (Kč)
+                      <input aria-label={`Cena ${item.name}`} type="number" min="0" step="0.01" inputMode="decimal" defaultValue={item.price ?? ''} key={`${item.id}-price-${item.price}`} onBlur={e => { if (e.target.value !== String(item.price ?? '')) handleUpdateItem(item, 'price', e.target.value); }} className="w-28 min-h-11 border border-gray-300 rounded-lg px-3 text-base" placeholder="Neuvedena" />
+                    </label>
+                  </div>}
                   <div className="px-4 pt-3 flex flex-wrap items-center gap-3">
                     <label className="text-sm">Typ položky <select aria-label={`Typ položky ${item.name}`} value={item.item_type || 'unclassified'} onChange={e => handleUpdateItem(item, 'item_type', e.target.value)} className="ml-2 border rounded-lg p-2 min-h-11">
                       <option value="unclassified">Vyberte typ</option><option value="asset">Dlouhodobý majetek</option><option value="consumable">Spotřební materiál</option>
@@ -336,6 +357,8 @@ export default function AdminBoxEditor({ box, sections, allBoxes }: Props) {
                         <input
                           type="text"
                           defaultValue={item.quantity || ''}
+                          aria-label={`Počet ${item.name}`}
+                          inputMode="decimal"
                           onBlur={(e) => {
                             if (e.target.value !== (item.quantity || '')) handleUpdateItem(item, 'quantity', e.target.value);
                           }}
@@ -440,6 +463,8 @@ export default function AdminBoxEditor({ box, sections, allBoxes }: Props) {
                           <input
                             type="text"
                             defaultValue={item.quantity || ''}
+                            aria-label={`Počet ${item.name}`}
+                            inputMode="decimal"
                             onBlur={(e) => {
                               if (e.target.value !== (item.quantity || '')) handleUpdateItem(item, 'quantity', e.target.value);
                             }}
@@ -574,7 +599,7 @@ export default function AdminBoxEditor({ box, sections, allBoxes }: Props) {
                       ))}
                     </div>
                   )}
-                </div>
+                </fieldset>
               );
             })}
           </div>

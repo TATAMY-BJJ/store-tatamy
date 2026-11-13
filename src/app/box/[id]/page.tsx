@@ -4,6 +4,7 @@ import { stockStatus } from '@/lib/stock';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import ItemPhotos from '@/components/ItemPhotos';
 
 export const revalidate = 0; // Vždy čerstvá data
 
@@ -33,6 +34,8 @@ export default async function BoxPage({ params }: BoxPageProps) {
     quantity: string | null;
     min_quantity: string | null;
     note: string | null;
+    price?: number | null;
+    photos?: string[];
     last_checked_date?: string | null;
     legacy_quantity?: string | null;
     lendings?: Array<{ id: number; lent_to: string; quantity: string }>;
@@ -102,6 +105,8 @@ export default async function BoxPage({ params }: BoxPageProps) {
                         <span className={belowMin ? 'text-tatamy-red font-medium' : ''}>
                           {item.name}
                         </span>
+                        {item.price != null && <p className="mt-1 font-medium">{new Intl.NumberFormat('cs-CZ', { style: 'currency', currency: 'CZK', maximumFractionDigits: 2 }).format(item.price)}</p>}
+                        <ItemPhotos photos={item.photos} name={item.name} />
                         {item.legacy_quantity && <p className="text-xs text-gray-600">Původní text množství: {item.legacy_quantity}</p>}
                         {item.last_checked_date && <p className="text-xs text-gray-600">Přepočítáno {new Date(item.last_checked_date + 'T12:00:00').toLocaleDateString('cs-CZ')}</p>}
                         {/* Výpůjčky */}

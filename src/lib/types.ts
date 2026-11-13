@@ -54,6 +54,9 @@ export interface Item {
   last_checked_at?: string | null;
   last_checked_date?: string | null;
   legacy_quantity?: string | null;
+  price?: number | null;
+  photos?: string[];
+  import_key?: string | null;
   note: string | null;
   created_at: string;
   lendings?: Lending[];

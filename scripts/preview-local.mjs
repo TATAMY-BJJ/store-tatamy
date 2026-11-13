@@ -18,6 +18,8 @@ await db.exec(
   "ALTER TABLE sections ADD COLUMN color text; INSERT INTO sections(name,color) VALUES('Technika','#1e1e1e'); INSERT INTO boxes(name,section_id) VALUES('Vybavení',1); INSERT INTO items(box_id,name,quantity,min_quantity) VALUES(1,'Stoly','100','100'),(1,'Trička','3x M, 1x XL','4');",
 );
 await db.exec(readFileSync('supabase/migrations/202610180001_inventories.sql', 'utf8'));
+await db.exec(readFileSync('supabase/migrations/202611130001_merch.sql', 'utf8'));
+await db.exec("UPDATE items SET price=600, photos=ARRAY['/tatamy-logo.png'], import_key='local:merch' WHERE id=2;");
 await db.exec(
   "UPDATE items SET item_type='asset' WHERE id=1; UPDATE items SET item_type='consumable' WHERE id=2; INSERT INTO lendings(item_id,lent_to,quantity) VALUES(1,'Testovací výpůjčka','3');",
 );
@@ -53,6 +55,20 @@ const server = createServer(async (request, response) => {
         )
       ).rows;
       result = rows[0].result;
+    } else if (name === 'items' && request.method === 'PATCH') {
+      const allowed = new Set(['name','quantity','min_quantity','note','box_id','item_type','price']);
+      const entries=Object.entries(body);
+      if(!entries.length || entries.some(([key])=>!allowed.has(key))) throw new Error('Invalid test update');
+      const id=url.searchParams.get('id');
+      if(!id?.startsWith('eq.')) throw new Error('Missing test ID');
+      const values=entries.map(([,value])=>value);
+      values.push(Number(id.slice(3)));
+      let where=`id=$${values.length}`;
+      const expected=url.searchParams.get('quantity');
+      if(expected==='is.null') where+=' AND quantity IS NULL';
+      else if(expected?.startsWith('eq.')) {values.push(expected.slice(3));where+=` AND quantity=$${values.length}`;}
+      const updated=await db.query(`UPDATE items SET ${entries.map(([key],i)=>`${key}=$${i+1}`).join(',')} WHERE ${where} RETURNING *`,values);
+      result=request.headers.accept?.includes('vnd.pgrst.object') ? updated.rows[0] : updated.rows;
     } else if (tables.has(name) && request.method === 'GET') {
       let rows = (await db.query(`SELECT * FROM ${name} ORDER BY id`)).rows;
       for (const column of ['id', 'inventory_id']) {
@@ -181,6 +197,14 @@ try {
     );
     const alerts = await (await fetch('http://127.0.0.1:3131/admin/alerts', { headers })).text();
     assert(alerts.includes('není potřeba dokupovat'));
+    const update = (body, authenticated=true) => fetch('http://127.0.0.1:3131/api/items/2', {method:'PUT',headers:authenticated?headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    assert.equal((await update({price:700},false)).status,401);
+    assert.equal((await update({price:-1})).status,400);
+    assert.equal((await update({price:0})).status,200);
+    assert.equal((await update({quantity:'3',expected_quantity:'4'})).status,200);
+    assert.equal((await update({quantity:'2',expected_quantity:'4'})).status,409);
+    assert.equal((await db.query('SELECT quantity FROM items WHERE id=2')).rows[0].quantity,'3');
+    assert.equal((await update({price:null})).status,200);
     console.log(
       'PASS: actual Next.js HTTP authentication, validation, inventory workflow, history, text preservation and recall UI. Local database only.',
     );
